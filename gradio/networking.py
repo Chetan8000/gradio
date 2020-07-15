@@ -18,13 +18,11 @@ import sys
 import analytics
 
 
-INITIAL_PORT_VALUE = (
-    7860
-)  # The http server will try to open on port 7860. If not available, 7861, 7862, etc.
+INITIAL_PORT_VALUE = 7860  # The http server will try to open on port 7860. If not available, 7861, 7862, etc.
 TRY_NUM_PORTS = (
-    100
-)  # Number of ports to try before giving up and throwing an exception.
-LOCALHOST_NAME = os.getenv('GRADIO_SERVER_NAME', "127.0.0.1")
+    100  # Number of ports to try before giving up and throwing an exception.
+)
+LOCALHOST_NAME = os.getenv("GRADIO_SERVER_NAME", "127.0.0.1")
 GRADIO_API_SERVER = "https://api.gradio.app/v1/tunnel-request"
 
 STATIC_TEMPLATE_LIB = pkg_resources.resource_filename("gradio", "templates/")
@@ -37,10 +35,10 @@ CONFIG_FILE = "static/config.json"
 ASSOCIATION_PATH_IN_STATIC = "static/apple-app-site-association"
 ASSOCIATION_PATH_IN_ROOT = "apple-app-site-association"
 
-FLAGGING_DIRECTORY = 'static/flagged/'
-FLAGGING_FILENAME = 'data.txt'
+FLAGGING_DIRECTORY = "static/flagged/"
+FLAGGING_FILENAME = "data.txt"
 analytics.write_key = "uxIFddIEuuUcFLf9VgH2teTEtPlWdkNy"
-analytics_url = 'https://api.gradio.app/'
+analytics_url = "https://api.gradio.app/"
 
 
 def build_template(temp_dir):
@@ -49,12 +47,13 @@ def build_template(temp_dir):
     :param temp_dir: string with path to temp directory in which the html file should be built
     """
     dir_util.copy_tree(STATIC_TEMPLATE_LIB, temp_dir)
-    dir_util.copy_tree(STATIC_PATH_LIB, os.path.join(
-        temp_dir, STATIC_PATH_TEMP))
+    dir_util.copy_tree(STATIC_PATH_LIB, os.path.join(temp_dir, STATIC_PATH_TEMP))
 
     # Move association file to root of temporary directory.
-    copyfile(os.path.join(temp_dir, ASSOCIATION_PATH_IN_STATIC),
-             os.path.join(temp_dir, ASSOCIATION_PATH_IN_ROOT))
+    copyfile(
+        os.path.join(temp_dir, ASSOCIATION_PATH_IN_STATIC),
+        os.path.join(temp_dir, ASSOCIATION_PATH_IN_ROOT),
+    )
 
 
 def render_template_with_tags(template_path, context):
@@ -116,21 +115,24 @@ def get_first_available_port(initial, final):
         )
     )
 
+
 def send_prediction_analytics(interface):
-    data = {'input_interface': interface.input_interfaces,
-            'output_interface': interface.output_interfaces,
-            }
+    data = {
+        "input_interface": interface.input_interfaces,
+        "output_interface": interface.output_interfaces,
+    }
     try:
-        requests.post(
-            analytics_url + 'gradio-prediction-analytics/',
-            data=data)
+        requests.post(analytics_url + "gradio-prediction-analytics/", data=data)
     except requests.ConnectionError:
         pass  # do not push analytics if no network
 
 
-def serve_files_in_background(interface, port, directory_to_serve=None, server_name=LOCALHOST_NAME):
+def serve_files_in_background(
+    interface, port, directory_to_serve=None, server_name=LOCALHOST_NAME
+):
     class HTTPHandler(SimpleHTTPRequestHandler):
         """This handler uses server.base_path instead of always using os.getcwd()"""
+
         def _set_headers(self):
             self.send_response(200)
             self.send_header("Content-type", "application/json")
@@ -150,8 +152,7 @@ def serve_files_in_background(interface, port, directory_to_serve=None, server_n
             if self.path == "/api/predict/":
                 # Make the prediction.
                 self._set_headers()
-                data_string = self.rfile.read(
-                    int(self.headers["Content-Length"]))
+                data_string = self.rfile.read(int(self.headers["Content-Length"]))
                 msg = json.loads(data_string)
                 raw_input = msg["data"]
                 prediction, durations = interface.process(raw_input)
@@ -159,7 +160,7 @@ def serve_files_in_background(interface, port, directory_to_serve=None, server_n
                 output = {"data": prediction, "durations": durations}
                 if interface.saliency is not None:
                     saliency = interface.saliency(raw_input, prediction)
-                    output['saliency'] = saliency.tolist()
+                    output["saliency"] = saliency.tolist()
                 # if interface.always_flag:
                 #     msg = json.loads(data_string)
                 #     flag_dir = os.path.join(FLAGGING_DIRECTORY, str(interface.hash))
@@ -174,33 +175,38 @@ def serve_files_in_background(interface, port, directory_to_serve=None, server_n
                 self.wfile.write(json.dumps(output).encode())
 
                 analytics_thread = threading.Thread(
-                    target=send_prediction_analytics, args=[interface])
+                    target=send_prediction_analytics, args=[interface]
+                )
                 analytics_thread.start()
 
             elif self.path == "/api/flag/":
                 self._set_headers()
-                data_string = self.rfile.read(
-                    int(self.headers["Content-Length"]))
+                data_string = self.rfile.read(int(self.headers["Content-Length"]))
                 msg = json.loads(data_string)
-                flag_dir = os.path.join(FLAGGING_DIRECTORY,
-                                        str(interface.flag_hash))
+                flag_dir = os.path.join(FLAGGING_DIRECTORY, str(interface.flag_hash))
                 os.makedirs(flag_dir, exist_ok=True)
-                output = {'inputs': [interface.input_interfaces[
-                    i].rebuild_flagged(
-                    flag_dir, msg['data']['input_data']) for i
-                    in range(len(interface.input_interfaces))],
-                    'outputs': [interface.output_interfaces[
-                        i].rebuild_flagged(
-                        flag_dir, msg['data']['output_data']) for i
-                    in range(len(interface.output_interfaces))],
-                    'message': msg['data']['message']}
+                output = {
+                    "inputs": [
+                        interface.input_interfaces[i].rebuild_flagged(
+                            flag_dir, msg["data"]["input_data"]
+                        )
+                        for i in range(len(interface.input_interfaces))
+                    ],
+                    "outputs": [
+                        interface.output_interfaces[i].rebuild_flagged(
+                            flag_dir, msg["data"]["output_data"]
+                        )
+                        for i in range(len(interface.output_interfaces))
+                    ],
+                    "message": msg["data"]["message"],
+                }
 
-                with open(os.path.join(flag_dir, FLAGGING_FILENAME), 'a+') as f:
+                with open(os.path.join(flag_dir, FLAGGING_FILENAME), "a+") as f:
                     f.write(json.dumps(output))
                     f.write("\n")
 
             else:
-                self.send_error(404, 'Path not found: {}'.format(self.path))
+                self.send_error(404, "Path not found: {}".format(self.path))
 
     class HTTPServer(BaseHTTPServer):
         """The main server, you pass in base_path which is the path you want to serve requests from"""
@@ -218,8 +224,8 @@ def serve_files_in_background(interface, port, directory_to_serve=None, server_n
                 sys.stdout.flush()
                 httpd.serve_forever()
         except (KeyboardInterrupt, OSError):
-                httpd.shutdown()
-                httpd.server_close()
+            httpd.shutdown()
+            httpd.server_close()
 
     thread = threading.Thread(target=serve_forever, daemon=False)
     thread.start()

@@ -23,9 +23,9 @@ def handler(chan, host, port):
         return
 
     verbose(
-        "Connected!  Tunnel open {} -> {} -> {}".format(chan.origin_addr,
-                                                        chan.getpeername(),
-                                                        (host, port))
+        "Connected!  Tunnel open {} -> {} -> {}".format(
+            chan.origin_addr, chan.getpeername(), (host, port)
+        )
     )
     while True:
         r, w, x = select.select([sock, chan], [], [])
@@ -66,8 +66,7 @@ def create_tunnel(payload, local_server, local_server_port):
     client.set_missing_host_key_policy(paramiko.WarningPolicy())
 
     verbose(
-        "Connecting to ssh host {}:{} ...".format(payload["host"], int(payload[
-                                                                     "port"]))
+        "Connecting to ssh host {}:{} ...".format(payload["host"], int(payload["port"]))
     )
     try:
         with warnings.catch_warnings():
@@ -80,16 +79,16 @@ def create_tunnel(payload, local_server, local_server_port):
             )
     except Exception as e:
         print(
-            "*** Failed to connect to {}:{}: {}}".format(payload["host"],
-                                                    int(payload["port"]), e)
+            "*** Failed to connect to {}:{}: {}}".format(
+                payload["host"], int(payload["port"]), e
+            )
         )
         sys.exit(1)
 
     verbose(
-        "Now forwarding remote port {} to {}:{} ...".format(int(payload[
-                                                              "remote_port"]),
-                                                            local_server,
-                                                            local_server_port)
+        "Now forwarding remote port {} to {}:{} ...".format(
+            int(payload["remote_port"]), local_server, local_server_port
+        )
     )
 
     thread = threading.Thread(

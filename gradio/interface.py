@@ -24,9 +24,9 @@ import analytics
 
 PKG_VERSION_URL = "https://gradio.app/api/pkg-version"
 analytics.write_key = "uxIFddIEuuUcFLf9VgH2teTEtPlWdkNy"
-analytics_url = 'https://api.gradio.app/'
+analytics_url = "https://api.gradio.app/"
 try:
-    ip_address = requests.get('https://api.ipify.org').text
+    ip_address = requests.get("https://api.ipify.org").text
 except requests.ConnectionError:
     ip_address = "No internet connection"
 
@@ -36,25 +36,41 @@ class Interface:
     The Interface class represents a general input/output interface for a machine learning model. During construction,
     the appropriate inputs and outputs
     """
+
     instances = weakref.WeakSet()
 
-    def __init__(self, fn, inputs, outputs, saliency=None, verbose=False, examples=None,
-                 live=False, show_input=True, show_output=True,
-                 capture_session=False, title=None, description=None,
-                 thumbnail=None, server_name=networking.LOCALHOST_NAME):
+    def __init__(
+        self,
+        fn,
+        inputs,
+        outputs,
+        saliency=None,
+        verbose=False,
+        examples=None,
+        live=False,
+        show_input=True,
+        show_output=True,
+        capture_session=False,
+        title=None,
+        description=None,
+        thumbnail=None,
+        server_name=networking.LOCALHOST_NAME,
+    ):
         """
         :param fn: a function that will process the input panel data from the interface and return the output panel data.
         :param inputs: a string or `AbstractInput` representing the input interface.
         :param outputs: a string or `AbstractOutput` representing the output interface.
         """
+
         def get_input_instance(iface):
             if isinstance(iface, str):
                 return gradio.inputs.shortcuts[iface.lower()]
             elif isinstance(iface, gradio.inputs.AbstractInput):
                 return iface
             else:
-                raise ValueError("Input interface must be of type `str` or "
-                                 "`AbstractInput`")
+                raise ValueError(
+                    "Input interface must be of type `str` or " "`AbstractInput`"
+                )
 
         def get_output_instance(iface):
             if isinstance(iface, str):
@@ -63,9 +79,9 @@ class Interface:
                 return iface
             else:
                 raise ValueError(
-                    "Output interface must be of type `str` or "
-                    "`AbstractOutput`"
+                    "Output interface must be of type `str` or " "`AbstractOutput`"
                 )
+
         if isinstance(inputs, list):
             self.input_interfaces = [get_input_instance(i) for i in inputs]
         else:
@@ -96,26 +112,29 @@ class Interface:
         self.simple_server = None
         Interface.instances.add(self)
 
-        data = {'fn': fn,
-                'inputs': inputs,
-                'outputs': outputs,
-                'saliency': saliency,
-                'live': live,
-                'capture_session': capture_session,
-                'ip_address': ip_address
-                }
+        data = {
+            "fn": fn,
+            "inputs": inputs,
+            "outputs": outputs,
+            "saliency": saliency,
+            "live": live,
+            "capture_session": capture_session,
+            "ip_address": ip_address,
+        }
 
         if self.capture_session:
             try:
                 import tensorflow as tf
-                self.session = tf.get_default_graph(), \
-                              tf.keras.backend.get_session()
-            except (ImportError, AttributeError):  # If they are using TF >= 2.0 or don't have TF, just ignore this.
+
+                self.session = tf.get_default_graph(), tf.keras.backend.get_session()
+            except (
+                ImportError,
+                AttributeError,
+            ):  # If they are using TF >= 2.0 or don't have TF, just ignore this.
                 pass
 
         try:
-            requests.post(analytics_url + 'gradio-initiated-analytics/',
-                          data=data)
+            requests.post(analytics_url + "gradio-initiated-analytics/", data=data)
         except requests.ConnectionError:
             pass  # do not push analytics if no network
 
@@ -123,17 +142,19 @@ class Interface:
         config = {
             "input_interfaces": [
                 (iface.__class__.__name__.lower(), iface.get_template_context())
-                for iface in self.input_interfaces],
+                for iface in self.input_interfaces
+            ],
             "output_interfaces": [
                 (iface.__class__.__name__.lower(), iface.get_template_context())
-                for iface in self.output_interfaces],
+                for iface in self.output_interfaces
+            ],
             "function_count": len(self.predict),
             "live": self.live,
             "show_input": self.show_input,
             "show_output": self.show_output,
             "title": self.title,
             "description": self.description,
-            "thumbnail": self.thumbnail
+            "thumbnail": self.thumbnail,
         }
         try:
             param_names = inspect.getfullargspec(self.predict[0])[0]
@@ -141,23 +162,28 @@ class Interface:
                 if not iface[1]["label"]:
                     iface[1]["label"] = param.replace("_", " ")
             for i, iface in enumerate(config["output_interfaces"]):
-                ret_name = "Output " + str(i + 1) if len(config["output_interfaces"]) > 1 else "Output"
+                ret_name = (
+                    "Output " + str(i + 1)
+                    if len(config["output_interfaces"]) > 1
+                    else "Output"
+                )
                 if not iface[1]["label"]:
                     iface[1]["label"] = ret_name
         except ValueError:
             pass
-        
-        return config    
+
+        return config
 
     def process(self, raw_input):
-        processed_input = [input_interface.preprocess(
-            raw_input[i]) for i, input_interface in
-            enumerate(self.input_interfaces)]
+        processed_input = [
+            input_interface.preprocess(raw_input[i])
+            for i, input_interface in enumerate(self.input_interfaces)
+        ]
         predictions = []
         durations = []
         for predict_fn in self.predict:
             start = time.time()
-            if self.capture_session and not(self.session is None):
+            if self.capture_session and not (self.session is None):
                 graph, sess = self.session
                 with graph.as_default():
                     with sess.as_default():
@@ -166,14 +192,15 @@ class Interface:
                 try:
                     prediction = predict_fn(*processed_input)
                 except ValueError as exception:
-                    if str(exception).endswith("is not an element of this "
-                                               "graph."):
-                        raise ValueError("It looks like you might be using "
-                                         "tensorflow < 2.0. Please "
-                                         "pass capture_session=True in "
-                                         "Interface to avoid the 'Tensor is "
-                                         "not an element of this graph.' "
-                                         "error.")
+                    if str(exception).endswith("is not an element of this " "graph."):
+                        raise ValueError(
+                            "It looks like you might be using "
+                            "tensorflow < 2.0. Please "
+                            "pass capture_session=True in "
+                            "Interface to avoid the 'Tensor is "
+                            "not an element of this graph.' "
+                            "error."
+                        )
                     else:
                         raise exception
             duration = time.time() - start
@@ -182,8 +209,10 @@ class Interface:
                 prediction = [prediction]
             durations.append(duration)
             predictions.extend(prediction)
-        processed_output = [output_interface.postprocess(
-            predictions[i]) for i, output_interface in enumerate(self.output_interfaces)]
+        processed_output = [
+            output_interface.postprocess(predictions[i])
+            for i, output_interface in enumerate(self.output_interfaces)
+        ]
         return processed_output, durations
 
     def validate(self):
@@ -203,7 +232,7 @@ class Interface:
         for m, msg in enumerate(validation_inputs):
             if self.verbose:
                 print(
-                    "Validating samples: {}/{}  [".format(m+1, n)
+                    "Validating samples: {}/{}  [".format(m + 1, n)
                     + "=" * (m + 1)
                     + "." * (n - m - 1)
                     + "]",
@@ -213,10 +242,9 @@ class Interface:
                 processed_input = self.input_interface.preprocess(msg)
                 prediction = self.predict(processed_input)
             except Exception as e:
-                data = {'error': e}
+                data = {"error": e}
                 try:
-                    requests.post(analytics_url + 'gradio-error-analytics/',
-                              data=data)
+                    requests.post(analytics_url + "gradio-error-analytics/", data=data)
                 except requests.ConnectionError:
                     pass  # do not push analytics if no network
                 if self.verbose:
@@ -229,10 +257,9 @@ class Interface:
             try:
                 _ = self.output_interface.postprocess(prediction)
             except Exception as e:
-                data = {'error': e}
+                data = {"error": e}
                 try:
-                    requests.post(analytics_url + 'gradio-error-analytics/',
-                                  data=data)
+                    requests.post(analytics_url + "gradio-error-analytics/", data=data)
                 except requests.ConnectionError:
                     pass  # do not push analytics if no network
                 if self.verbose:
@@ -251,11 +278,15 @@ class Interface:
         raise RuntimeError("Validation did not pass")
 
     def close(self):
-        if self.simple_server and not(self.simple_server.fileno() == -1):  # checks to see if server is running
+        if self.simple_server and not (
+            self.simple_server.fileno() == -1
+        ):  # checks to see if server is running
             print("Closing Gradio server on port {}...".format(self.server_port))
             networking.close_server(self.simple_server)
 
-    def launch(self, inline=None, inbrowser=None, share=False, validate=True, debug=False):
+    def launch(
+        self, inline=None, inbrowser=None, share=False, validate=True, debug=False
+    ):
         """
         Standard method shared by interfaces that creates the interface and sets up a websocket to communicate with it.
         :param inline: boolean. If True, then a gradio interface is created inline (e.g. in jupyter or colab notebook)
@@ -268,7 +299,9 @@ class Interface:
 
         output_directory = tempfile.mkdtemp()
         # Set up a port to serve the directory containing the static files with interface.
-        server_port, httpd = networking.start_simple_server(self, output_directory, self.server_name)
+        server_port, httpd = networking.start_simple_server(
+            self, output_directory, self.server_name
+        )
         path_to_local_server = "http://{}:{}/".format(self.server_name, server_port)
         networking.build_template(output_directory)
 
@@ -282,10 +315,9 @@ class Interface:
             if "google.colab" in str(from_ipynb):
                 is_colab = True
         except NameError:
-            data = {'error': 'NameError in launch method'}
+            data = {"error": "NameError in launch method"}
             try:
-                requests.post(analytics_url + 'gradio-error-analytics/',
-                              data=data)
+                requests.post(analytics_url + "gradio-error-analytics/", data=data)
             except requests.ConnectionError:
                 pass  # do not push analytics if no network
             pass
@@ -294,11 +326,14 @@ class Interface:
             current_pkg_version = pkg_resources.require("gradio")[0].version
             latest_pkg_version = requests.get(url=PKG_VERSION_URL).json()["version"]
             if StrictVersion(latest_pkg_version) > StrictVersion(current_pkg_version):
-                print("IMPORTANT: You are using gradio version {}, "
-                      "however version {} "
-                      "is available, please upgrade.".format(
-                            current_pkg_version, latest_pkg_version))
-                print('--------')
+                print(
+                    "IMPORTANT: You are using gradio version {}, "
+                    "however version {} "
+                    "is available, please upgrade.".format(
+                        current_pkg_version, latest_pkg_version
+                    )
+                )
+                print("--------")
         except:  # TODO(abidlabs): don't catch all exceptions
             pass
 
@@ -306,20 +341,23 @@ class Interface:
             print(strings.en["RUNNING_LOCALLY"].format(path_to_local_server))
         else:
             if debug:
-                print("Colab notebook detected. This cell will run indefinitely so that you can see errors and logs. "
-                      "To turn off, set debug=False in launch().")
+                print(
+                    "Colab notebook detected. This cell will run indefinitely so that you can see errors and logs. "
+                    "To turn off, set debug=False in launch()."
+                )
             else:
-                print("Colab notebook detected. To show errors in colab notebook, set debug=True in launch()")
+                print(
+                    "Colab notebook detected. To show errors in colab notebook, set debug=True in launch()"
+                )
 
         if share:
             try:
                 share_url = networking.setup_tunnel(server_port)
                 print("Running on External URL:", share_url)
             except RuntimeError:
-                data = {'error': 'RuntimeError in launch method'}
+                data = {"error": "RuntimeError in launch method"}
                 try:
-                    requests.post(analytics_url + 'gradio-error-analytics/',
-                                  data=data)
+                    requests.post(analytics_url + "gradio-error-analytics/", data=data)
                 except requests.ConnectionError:
                     pass  # do not push analytics if no network
                 share_url = None
@@ -359,9 +397,7 @@ class Interface:
         if inline:
             from IPython.display import IFrame, display
 
-            if (
-                is_colab
-            ):  # Embed the remote interface page if on google colab;
+            if is_colab:  # Embed the remote interface page if on google colab;
                 # otherwise, embed the local page.
                 print("Interface loading below...")
                 while not networking.url_ok(share_url):
@@ -389,23 +425,23 @@ class Interface:
                 sys.stdout.flush()
                 time.sleep(0.1)
 
-        launch_method = 'browser' if inbrowser else 'inline'
-        data = {'launch_method': launch_method,
-                'is_google_colab': is_colab,
-                'is_sharing_on': share,
-                'share_url': share_url,
-                'ip_address': ip_address
-                }
+        launch_method = "browser" if inbrowser else "inline"
+        data = {
+            "launch_method": launch_method,
+            "is_google_colab": is_colab,
+            "is_sharing_on": share,
+            "share_url": share_url,
+            "ip_address": ip_address,
+        }
         try:
-            requests.post(analytics_url + 'gradio-launched-analytics/',
-                          data=data)
+            requests.post(analytics_url + "gradio-launched-analytics/", data=data)
         except requests.ConnectionError:
             pass  # do not push analytics if no network
         return httpd, path_to_local_server, share_url
 
     @classmethod
     def get_instances(cls):
-        return list(Interface.instances) #Returns list of all current instances
+        return list(Interface.instances)  # Returns list of all current instances
 
 
 def reset_all():

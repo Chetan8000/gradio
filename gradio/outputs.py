@@ -13,7 +13,7 @@ import operator
 from numbers import Number
 
 # Where to find the static resources associated with each template.
-BASE_OUTPUT_INTERFACE_JS_PATH = 'static/js/interfaces/output/{}.js'
+BASE_OUTPUT_INTERFACE_JS_PATH = "static/js/interfaces/output/{}.js"
 
 
 class AbstractOutput(ABC):
@@ -21,6 +21,7 @@ class AbstractOutput(ABC):
     An abstract class for defining the methods that all gradio inputs should have.
     When this is subclassed, it is automatically added to the registry
     """
+
     def __init__(self, label):
         self.label = label
 
@@ -58,26 +59,24 @@ class Label(AbstractOutput):
             return {"label": str(prediction)}
         elif isinstance(prediction, dict):
             sorted_pred = sorted(
-                prediction.items(), 
-                key=operator.itemgetter(1),
-                reverse=True
+                prediction.items(), key=operator.itemgetter(1), reverse=True
             )
             if self.num_top_classes is not None:
-                sorted_pred = sorted_pred[:self.num_top_classes]
+                sorted_pred = sorted_pred[: self.num_top_classes]
             return {
                 self.LABEL_KEY: sorted_pred[0][0],
                 self.CONFIDENCES_KEY: [
-                    {
-                        self.LABEL_KEY: pred[0],
-                        self.CONFIDENCE_KEY: pred[1]
-                    } for pred in sorted_pred
-                ]
+                    {self.LABEL_KEY: pred[0], self.CONFIDENCE_KEY: pred[1]}
+                    for pred in sorted_pred
+                ],
             }
         elif isinstance(prediction, int) or isinstance(prediction, float):
             return {self.LABEL_KEY: str(prediction)}
         else:
-            raise ValueError("The `Label` output interface expects one of: a string label, or an int label, a "
-                             "float label, or a dictionary whose keys are labels and values are confidences.")
+            raise ValueError(
+                "The `Label` output interface expects one of: a string label, or an int label, a "
+                "float label, or a dictionary whose keys are labels and values are confidences."
+            )
 
     @classmethod
     def get_shortcut_implementations(cls):
@@ -94,8 +93,10 @@ class KeyValues(AbstractOutput):
         if isinstance(prediction, dict):
             return prediction
         else:
-            raise ValueError("The `KeyValues` output interface expects an output that is a dictionary whose keys are "
-                             "labels and values are corresponding values.")
+            raise ValueError(
+                "The `KeyValues` output interface expects an output that is a dictionary whose keys are "
+                "labels and values are corresponding values."
+            )
 
     @classmethod
     def get_shortcut_implementations(cls):
@@ -109,9 +110,7 @@ class Textbox(AbstractOutput):
         super().__init__(label)
 
     def get_template_context(self):
-        return {
-            **super().get_template_context()
-        }
+        return {**super().get_template_context()}
 
     @classmethod
     def get_shortcut_implementations(cls):
@@ -122,11 +121,17 @@ class Textbox(AbstractOutput):
         }
 
     def postprocess(self, prediction):
-        if isinstance(prediction, str) or isinstance(prediction, int) or isinstance(prediction, float):
+        if (
+            isinstance(prediction, str)
+            or isinstance(prediction, int)
+            or isinstance(prediction, float)
+        ):
             return str(prediction)
         else:
-            raise ValueError("The `Textbox` output interface expects an output that is one of: a string, or"
-                             "an int/float that can be converted to a string.")
+            raise ValueError(
+                "The `Textbox` output interface expects an output that is one of: a string, or"
+                "an int/float that can be converted to a string."
+            )
 
 
 class Image(AbstractOutput):
@@ -136,10 +141,7 @@ class Image(AbstractOutput):
 
     @classmethod
     def get_shortcut_implementations(cls):
-        return {
-            "image": {},
-            "plot": {"plot": True}
-        }
+        return {"image": {}, "plot": {"plot": True}}
 
     def postprocess(self, prediction):
         """
@@ -148,13 +150,17 @@ class Image(AbstractOutput):
             try:
                 return preprocessing_utils.encode_plot_to_base64(prediction)
             except:
-                raise ValueError("The `Image` output interface expects a `matplotlib.pyplot` object"
-                                 "if plt=True.")
+                raise ValueError(
+                    "The `Image` output interface expects a `matplotlib.pyplot` object"
+                    "if plt=True."
+                )
         else:
             try:
                 return preprocessing_utils.encode_array_to_base64(prediction)
             except:
-                raise ValueError("The `Image` output interface (with plt=False) expects a numpy array.")
+                raise ValueError(
+                    "The `Image` output interface (with plt=False) expects a numpy array."
+                )
 
     def rebuild_flagged(self, dir, msg):
         """
@@ -162,9 +168,8 @@ class Image(AbstractOutput):
         """
         im = preprocessing_utils.decode_base64_to_image(msg)
         timestamp = datetime.datetime.now()
-        filename = 'output_{}.png'.format(timestamp.
-                                          strftime("%Y-%m-%d-%H-%M-%S"))
-        im.save('{}/{}'.format(dir, filename), 'PNG')
+        filename = "output_{}.png".format(timestamp.strftime("%Y-%m-%d-%H-%M-%S"))
+        im.save("{}/{}".format(dir, filename), "PNG")
         return filename
 
 
